@@ -3,10 +3,12 @@ import { createHash } from "node:crypto";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
 
+export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+
 export type TelegramCallResult = {
   ok: boolean;
   status: number;
-  body: unknown;
+  body: Json;
   method: string;
   durationMs: number;
 };
@@ -32,9 +34,9 @@ async function callTelegram(
   });
 
   const raw = await response.text();
-  let body: unknown;
+  let body: Json;
   try {
-    body = JSON.parse(raw);
+    body = JSON.parse(raw) as Json;
   } catch {
     body = raw;
   }
