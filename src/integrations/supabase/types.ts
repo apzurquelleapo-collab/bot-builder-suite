@@ -14,7 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      telegram_api_log: {
+        Row: {
+          created_at: string
+          id: string
+          method: string
+          ok: boolean
+          request: Json | null
+          response: Json | null
+          status_code: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          method: string
+          ok?: boolean
+          request?: Json | null
+          response?: Json | null
+          status_code?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          method?: string
+          ok?: boolean
+          request?: Json | null
+          response?: Json | null
+          status_code?: number | null
+        }
+        Relationships: []
+      }
+      telegram_updates: {
+        Row: {
+          chat_id: number | null
+          chat_title: string | null
+          chat_type: string | null
+          created_at: string
+          from_id: number | null
+          from_name: string | null
+          from_username: string | null
+          id: string
+          kind: string
+          message_thread_id: number | null
+          raw: Json
+          status: string
+          text: string | null
+          update_id: number
+        }
+        Insert: {
+          chat_id?: number | null
+          chat_title?: string | null
+          chat_type?: string | null
+          created_at?: string
+          from_id?: number | null
+          from_name?: string | null
+          from_username?: string | null
+          id?: string
+          kind?: string
+          message_thread_id?: number | null
+          raw: Json
+          status?: string
+          text?: string | null
+          update_id: number
+        }
+        Update: {
+          chat_id?: number | null
+          chat_title?: string | null
+          chat_type?: string | null
+          created_at?: string
+          from_id?: number | null
+          from_name?: string | null
+          from_username?: string | null
+          id?: string
+          kind?: string
+          message_thread_id?: number | null
+          raw?: Json
+          status?: string
+          text?: string | null
+          update_id?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
