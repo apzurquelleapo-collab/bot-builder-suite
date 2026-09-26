@@ -1,7 +1,7 @@
 export type ParsedTelegramLink = {
   chatId: string;
-  threadId?: number;
-  messageId?: number;
+  threadId?: number | undefined;
+  messageId?: number | undefined;
   kind: "private-group" | "public" | "raw-id";
   note: string;
 };
