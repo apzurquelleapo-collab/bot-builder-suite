@@ -37,9 +37,8 @@ export function ConnectionPanel() {
   const register = useMutation({ mutationFn: useServerFn(registerWebhook) });
   const remove = useMutation({ mutationFn: useServerFn(removeWebhook) });
 
-  const check = useServerFn(getBotInfo);
   useEffect(() => {
-    check().then((r) => me.reset() ?? r);
+    me.mutate({} as never);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
