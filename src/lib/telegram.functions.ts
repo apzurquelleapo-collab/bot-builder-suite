@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createHash } from "node:crypto";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
 
@@ -73,7 +72,8 @@ async function callTelegram(
   return result;
 }
 
-export function deriveTelegramWebhookSecret(telegramApiKey: string): string {
+export async function deriveTelegramWebhookSecret(telegramApiKey: string): Promise<string> {
+  const { createHash } = await import("node:crypto");
   return createHash("sha256").update(`telegram-webhook:${telegramApiKey}`).digest("base64url");
 }
 
@@ -103,7 +103,7 @@ export const registerWebhook = createServerFn({ method: "POST" })
   .handler(async ({ data }) =>
     callTelegram("setWebhook", {
       url: data.url,
-      secret_token: deriveTelegramWebhookSecret(process.env["TELEGRAM_API_KEY"]!),
+      secret_token: await deriveTelegramWebhookSecret(process.env["TELEGRAM_API_KEY"]!),
       allowed_updates: ["message", "edited_message", "channel_post", "callback_query"],
       drop_pending_updates: false,
     }),
