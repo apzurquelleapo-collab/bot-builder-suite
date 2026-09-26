@@ -80,7 +80,8 @@ export function PayloadTester() {
     try {
       payload = JSON.parse(body || "{}");
     } catch {
-      return toast.error("The payload is not valid JSON");
+      toast.error("The payload is not valid JSON");
+      return;
     }
     call.mutate(
       { data: { method, payload } },

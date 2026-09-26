@@ -65,12 +65,18 @@ export function InboxPanel() {
 
   async function setStatus(id: string, status: string) {
     const { error } = await supabase.from("telegram_updates").update({ status }).eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     void queryClient.invalidateQueries({ queryKey: ["telegram_updates"] });
   }
 
   function reply(row: Row) {
-    if (!row.chat_id) return toast.error("This update has no chat to reply to");
+    if (!row.chat_id) {
+      toast.error("This update has no chat to reply to");
+      return;
+    }
     send.mutate(
       {
         data: {
