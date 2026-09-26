@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { JsonView } from "./JsonView";
 import { sendBroadcast } from "@/lib/telegram.functions";
+import { parseTelegramLink, type ParsedTelegramLink } from "@/lib/telegram-link";
 
 type InlineButton = { text: string; url: string; callback_data: string };
 
@@ -43,6 +44,27 @@ export function ComposePanel({ prefill }: { prefill?: { chatId?: string; threadI
   ]);
   const [replyRows, setReplyRows] = useState("Yes, No\nMore info");
   const [results, setResults] = useState<unknown>(null);
+  const [link, setLink] = useState("");
+  const [decoded, setDecoded] = useState<ParsedTelegramLink | null>(null);
+
+  const addUnique = (current: string, value: string) => {
+    const list = current.split(",").map((s) => s.trim()).filter(Boolean);
+    if (!list.includes(value)) list.push(value);
+    return list.join(", ");
+  };
+
+  const applyLink = (value?: string) => {
+    const parsed = parseTelegramLink(value ?? link);
+    if (!parsed) {
+      toast.error("Couldn't read that link", { description: "Use a t.me link, @username or numeric chat ID." });
+      return;
+    }
+    setDecoded(parsed);
+    setChats((c) => addUnique(c, parsed.chatId));
+    if (parsed.threadId !== undefined) setThreads((t) => addUnique(t, String(parsed.threadId)));
+    toast.success(`Added ${parsed.chatId}${parsed.threadId !== undefined ? ` · topic ${parsed.threadId}` : ""}`);
+    setLink("");
+  };
 
   const send = useMutation({ mutationFn: useServerFn(sendBroadcast) });
 
@@ -107,6 +129,35 @@ export function ComposePanel({ prefill }: { prefill?: { chatId?: string; threadI
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="tglink">Paste a Telegram link (group, channel, topic)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="tglink"
+                placeholder="https://t.me/c/1234567890/55/120"
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && applyLink()}
+                onPaste={(e) => {
+                  const v = e.clipboardData.getData("text");
+                  setTimeout(() => applyLink(v), 0);
+                }}
+                className="font-mono text-xs"
+              />
+              <Button type="button" variant="secondary" onClick={() => applyLink()}>
+                Decode
+              </Button>
+            </div>
+            {decoded && (
+              <p className="font-mono text-xs text-muted-foreground">
+                {decoded.note}: chat <span className="text-foreground">{decoded.chatId}</span>
+                {decoded.threadId !== undefined && (
+                  <> · topic <span className="text-foreground">{decoded.threadId}</span></>
+                )}
+                {decoded.messageId !== undefined && <> · message {decoded.messageId}</>}
+              </p>
+            )}
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="chats">Chat IDs (user, group, channel)</Label>
