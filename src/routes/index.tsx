@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConnectionPanel } from "@/components/workbench/ConnectionPanel";
@@ -49,6 +49,12 @@ function Workbench() {
             Wire up the webhook, broadcast across chats, groups, channels and forum topics, attach
             keyboards and media, and watch every inbound update arrive in real time.
           </p>
+          <Link
+            to="/guide"
+            className="mt-5 inline-flex items-center rounded-md border border-primary/40 bg-primary/10 px-4 py-2 font-mono text-xs text-primary hover:bg-primary/20"
+          >
+            Open the feature guide → buttons, code, polls, calendar…
+          </Link>
         </header>
       </div>
 
