@@ -233,11 +233,14 @@ function Guide() {
   const [last, setLast] = useState<unknown>(null);
 
   const send = async (ex: Example) => {
-    if (!chatId.trim()) return toast.error("Enter a chat ID first");
+    if (!chatId.trim()) {
+      toast.error("Enter a chat ID first");
+      return;
+    }
     setBusy(ex.title);
     try {
       const payload: Record<string, unknown> = { chat_id: chatId.trim(), ...ex.payload };
-      if (threadId.trim()) payload.message_thread_id = Number(threadId);
+      if (threadId.trim()) payload["message_thread_id"] = Number(threadId);
       const res = (await call({ data: { method: ex.method, payload } })) as { ok: boolean; body: { description?: string } };
       setLast(res);
       if (res.ok) toast.success(`${ex.title} sent`);
