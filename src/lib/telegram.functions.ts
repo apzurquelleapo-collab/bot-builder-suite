@@ -186,3 +186,99 @@ export const answerCallback = createServerFn({ method: "POST" })
       text: data.text ?? "",
     }),
   );
+
+// ============= File uploads (multipart/form-data) =============
+
+const UPLOAD_KINDS = {
+  photo: "sendPhoto",
+  document: "sendDocument",
+  voice: "sendVoice",
+  video: "sendVideo",
+  animation: "sendAnimation",
+  videoNote: "sendVideoNote",
+} as const;
+
+export type UploadPayload = {
+  chatId: string;
+  kind: keyof typeof UPLOAD_KINDS;
+  fileBase64: string;
+  filename: string;
+  caption?: string;
+  parseMode?: "HTML" | "MarkdownV2" | "None";
+  threadId?: number | null;
+};
+
+/** Sends a file straight from the user's computer via multipart/form-data. */
+export const uploadMedia = createServerFn({ method: "POST" })
+  .inputValidator((input: UploadPayload) => {
+    if (!input?.chatId?.trim()) throw new Error("A chat ID is required");
+    if (!UPLOAD_KINDS[input.kind]) throw new Error("Unknown media kind");
+    if (!input.fileBase64) throw new Error("A file is required");
+    if (input.fileBase64.length > 14_000_000) {
+      throw new Error("File is too large — keep uploads under about 10 MB");
+    }
+    return input;
+  })
+  .handler(async ({ data }) => {
+    const lovableKey = process.env["LOVABLE_API_KEY"];
+    const telegramKey = process.env["TELEGRAM_API_KEY"];
+    if (!lovableKey) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!telegramKey) throw new Error("TELEGRAM_API_KEY is not configured");
+
+    const base64 = data.fileBase64.includes(",") ? data.fileBase64.split(",")[1]! : data.fileBase64;
+    const buffer = Buffer.from(base64, "base64");
+
+    const form = new FormData();
+    form.append("chat_id", data.chatId.trim());
+    if (data.threadId != null) form.append("message_thread_id", String(data.threadId));
+    if (data.caption?.trim()) {
+      form.append("caption", data.caption.trim());
+      if (data.parseMode && data.parseMode !== "None") form.append("parse_mode", data.parseMode);
+    }
+    form.append(
+      data.kind === "videoNote" ? "video_note" : data.kind,
+      new Blob([new Uint8Array(buffer)]),
+      data.filename || "upload",
+    );
+
+    const method = UPLOAD_KINDS[data.kind];
+    const started = Date.now();
+    const response = await fetch(`${GATEWAY_URL}/${method}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "X-Connection-Api-Key": telegramKey,
+      },
+      body: form,
+    });
+
+    const raw = await response.text();
+    let body: Json;
+    try {
+      body = JSON.parse(raw) as Json;
+    } catch {
+      body = raw;
+    }
+    const ok =
+      response.ok &&
+      (typeof body !== "object" || body === null || (body as { ok?: boolean }).ok !== false);
+
+    if (!response.ok) {
+      console.error(`Telegram ${method} upload failed [${response.status}]: ${raw}`);
+    }
+
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("telegram_api_log").insert({
+        method,
+        request: { kind: data.kind, filename: data.filename, bytes: buffer.length },
+        response: (body ?? null) as never,
+        ok,
+        status_code: response.status,
+      });
+    } catch (logError) {
+      console.error("Failed to log Telegram upload", logError);
+    }
+
+    return { ok, status: response.status, body, method, durationMs: Date.now() - started };
+  });

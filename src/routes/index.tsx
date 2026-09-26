@@ -5,6 +5,7 @@ import { ConnectionPanel } from "@/components/workbench/ConnectionPanel";
 import { ComposePanel } from "@/components/workbench/ComposePanel";
 import { InboxPanel } from "@/components/workbench/InboxPanel";
 import { PayloadTester } from "@/components/workbench/PayloadTester";
+import { SuperpowersPanel } from "@/components/workbench/SuperpowersPanel";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -63,6 +64,7 @@ function Workbench() {
           <TabsList className="bg-surface-strong font-mono text-xs">
             <TabsTrigger value="connection">Connection</TabsTrigger>
             <TabsTrigger value="compose">Compose</TabsTrigger>
+            <TabsTrigger value="superpowers">Superpowers</TabsTrigger>
             <TabsTrigger value="inbox">Inbox</TabsTrigger>
             <TabsTrigger value="tester">Payload tester</TabsTrigger>
           </TabsList>
@@ -72,6 +74,9 @@ function Workbench() {
           </TabsContent>
           <TabsContent value="compose">
             <ComposePanel />
+          </TabsContent>
+          <TabsContent value="superpowers">
+            <SuperpowersPanel />
           </TabsContent>
           <TabsContent value="inbox">
             <InboxPanel />
