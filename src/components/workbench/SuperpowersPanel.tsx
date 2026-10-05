@@ -272,7 +272,7 @@ export function SuperpowersPanel() {
                 if (ids) run("setMessageReaction", { chat_id: ids.chatId, message_id: ids.messageId, reaction: [{ type: "emoji", emoji: reactionEmoji }] }, "Reaction set");
               }}>React {reactionEmoji}</Button>
               <Button size="sm" variant="outline" onClick={() => {
-                if (!chatId.trim()) return toast.error("Chat ID is required");
+                if (!chatId.trim()) { toast.error("Chat ID is required"); return; }
                 run("sendChatAction", { chat_id: chatId.trim(), action: chatAction }, "Activity shown");
               }}>Show “{chatAction}”</Button>
             </div>
@@ -365,22 +365,22 @@ export function SuperpowersPanel() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => {
-                if (!mediaChat.trim()) return toast.error("Chat ID is required");
+                if (!mediaChat.trim()) { toast.error("Chat ID is required"); return; }
                 run("sendMediaGroup", { chat_id: mediaChat.trim(), media: [
                   { type: "photo", media: albumA.trim(), caption: "Album photo 1" },
                   { type: "photo", media: albumB.trim(), caption: "Album photo 2" },
                 ] }, "Album sent");
               }} disabled={!albumA.trim() || !albumB.trim()}>Send album</Button>
               <Button size="sm" variant="outline" onClick={() => {
-                if (!stickerId.trim()) return toast.error("A sticker file_id is required");
+                if (!stickerId.trim()) { toast.error("A sticker file_id is required"); return; }
                 run("sendSticker", { chat_id: mediaChat.trim(), sticker: stickerId.trim() }, "Sticker sent");
               }}>Send sticker</Button>
               <Button size="sm" variant="outline" onClick={() => {
-                if (!gifUrl.trim()) return toast.error("A GIF URL is required");
+                if (!gifUrl.trim()) { toast.error("A GIF URL is required"); return; }
                 run("sendAnimation", { chat_id: mediaChat.trim(), animation: gifUrl.trim() }, "GIF sent");
               }}>Send GIF</Button>
               <Button size="sm" variant="outline" onClick={() => {
-                if (!videoUrl.trim()) return toast.error("A video URL is required");
+                if (!videoUrl.trim()) { toast.error("A video URL is required"); return; }
                 run("sendVideo", { chat_id: mediaChat.trim(), video: videoUrl.trim() }, "Video sent");
               }}>Send video</Button>
             </div>
@@ -415,7 +415,7 @@ export function SuperpowersPanel() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => {
-                if (!groupChat.trim()) return toast.error("Group / channel ID is required");
+                if (!groupChat.trim()) { toast.error("Group / channel ID is required"); return; }
                 const payload: Record<string, unknown> = { chat_id: groupChat.trim(), name: inviteName.trim() || undefined };
                 const hours = num(inviteHours);
                 if (hours) payload["expire_date"] = Math.floor(Date.now() / 1000) + hours * 3600;
@@ -424,11 +424,11 @@ export function SuperpowersPanel() {
                 run("createChatInviteLink", payload, "Invite link created");
               }}>Create invite link</Button>
               <Button size="sm" variant="outline" onClick={() => {
-                if (!groupChat.trim() || !num(banUser)) return toast.error("Group ID and a numeric user ID are required");
+                if (!groupChat.trim() || !num(banUser)) { toast.error("Group ID and a numeric user ID are required"); return; }
                 run("banChatMember", { chat_id: groupChat.trim(), user_id: num(banUser) }, "Member banned");
               }}>Ban user</Button>
               <Button size="sm" variant="outline" onClick={() => {
-                if (!groupChat.trim() || !num(banUser)) return toast.error("Group ID and a numeric user ID are required");
+                if (!groupChat.trim() || !num(banUser)) { toast.error("Group ID and a numeric user ID are required"); return; }
                 run("unbanChatMember", { chat_id: groupChat.trim(), user_id: num(banUser), only_if_banned: true }, "Member unbanned");
               }}>Unban user</Button>
             </div>
@@ -445,7 +445,7 @@ export function SuperpowersPanel() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" onClick={() => {
-                  if (!groupChat.trim()) return toast.error("Group ID is required");
+                  if (!groupChat.trim()) { toast.error("Group ID is required"); return; }
                   run("createForumTopic", { chat_id: groupChat.trim(), name: topicName.trim() || "New topic", icon_color: 7322096 }, "Topic created");
                 }}>Create topic</Button>
                 <Button size="sm" variant="outline" disabled={!num(topicId)} onClick={() => {
@@ -477,7 +477,7 @@ export function SuperpowersPanel() {
             />
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => {
-                if (!menuCommands.length) return toast.error("Add at least one command line like: start - Description");
+                if (!menuCommands.length) { toast.error("Add at least one command line like: start - Description"); return; }
                 run("setMyCommands", { commands: menuCommands }, "Command menu saved");
               }}>Save menu</Button>
               <Button size="sm" variant="outline" onClick={() => run("getMyCommands", {}, "Current menu fetched")}>Get current</Button>
@@ -500,7 +500,7 @@ export function SuperpowersPanel() {
               <div className="flex flex-wrap items-center gap-2">
                 <Input value={webText} onChange={(e) => setWebText(e.target.value)} className="min-w-40 flex-1 font-mono text-xs" />
                 <Button size="sm" onClick={() => {
-                  if (!chatId.trim() || !webUrl.trim().startsWith("https://")) return toast.error("Chat ID and an https:// URL are required");
+                  if (!chatId.trim() || !webUrl.trim().startsWith("https://")) { toast.error("Chat ID and an https:// URL are required"); return; }
                   run("sendMessage", { chat_id: chatId.trim(), text: webText, reply_markup: { inline_keyboard: [[{ text: "🚀 Open Mini App", web_app: { url: webUrl.trim() } }]] } }, "Mini App message sent");
                 }}>Send Mini App button</Button>
               </div>
@@ -525,7 +525,7 @@ export function SuperpowersPanel() {
             </div>
             <Button size="sm" onClick={() => {
               const stars = num(invoiceStars);
-              if (!chatId.trim() || !stars) return toast.error("Chat ID and a Star amount are required");
+              if (!chatId.trim() || !stars) { toast.error("Chat ID and a Star amount are required"); return; }
               run("sendInvoice", {
                 chat_id: chatId.trim(),
                 title: invoiceTitle.trim() || "Payment",
