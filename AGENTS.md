@@ -10,7 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Telegram workbench
-- All Telegram Bot API calls go through `callTelegram` in `src/lib/telegram.functions.ts` (connector gateway), so every call is logged to `telegram_api_log` in one place.
+- All Telegram Bot API calls go through `callTelegram` in `src/lib/telegram.functions.ts` (connector gateway), so request handling lives in one place.
 - 
 
 ## Storage
