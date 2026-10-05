@@ -1,15 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { JsonView } from "./JsonView";
-import { answerCallback, sendBroadcast } from "@/lib/telegram.functions";
+import { answerCallback, pollUpdates, sendBroadcast } from "@/lib/telegram.functions";
+import { cacheGet, cacheSet, useCache } from "@/lib/local-cache";
 
 type Row = {
   id: string;
@@ -27,49 +27,76 @@ type Row = {
   created_at: string;
 };
 
+const MAX_ROWS = 300;
+
+function toRow(update: Record<string, any>): Row {
+  const callback = update["callback_query"];
+  const message =
+    update["message"] ?? update["edited_message"] ?? update["channel_post"] ?? callback?.message;
+  const kind = callback ? "callback_query" : message?.photo ? "photo" : message?.document ? "document" : message?.voice ? "voice" : "message";
+  const from = callback?.from ?? message?.from;
+  return {
+    id: String(update["update_id"]),
+    update_id: update["update_id"],
+    chat_id: message?.chat?.id ?? null,
+    chat_title: message?.chat?.title ?? message?.chat?.username ?? null,
+    chat_type: message?.chat?.type ?? null,
+    message_thread_id: message?.message_thread_id ?? null,
+    from_name: [from?.first_name, from?.last_name].filter(Boolean).join(" ") || null,
+    from_username: from?.username ?? null,
+    text: callback?.data ?? message?.text ?? message?.caption ?? null,
+    kind,
+    status: "new",
+    raw: update,
+    created_at: new Date((message?.date ?? Date.now() / 1000) * 1000).toISOString(),
+  };
+}
+
 export function InboxPanel() {
-  const queryClient = useQueryClient();
   const [openRaw, setOpenRaw] = useState<string | null>(null);
   const [replyFor, setReplyFor] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
-
-  const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["telegram_updates"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("telegram_updates")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (error) throw error;
-      return data as unknown as Row[];
-    },
-  });
+  const [rows, setRows] = useCache<Row[]>("inbox", []);
+  const poll = useServerFn(pollUpdates);
+  const busy = useRef(false);
+  const isLoading = false;
 
   useEffect(() => {
-    const channel = supabase
-      .channel("telegram_updates_feed")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "telegram_updates" },
-        () => void queryClient.invalidateQueries({ queryKey: ["telegram_updates"] }),
-      )
-      .subscribe();
+    let stop = false;
+    async function tick() {
+      if (busy.current || stop) return;
+      busy.current = true;
+      try {
+        const offset = cacheGet<number | undefined>("offset", undefined);
+        const r = await poll({ data: { offset } });
+        const list = (r.body as { result?: Record<string, any>[] } | null)?.result;
+        if (r.ok && Array.isArray(list) && list.length) {
+          const fresh = list.map(toRow);
+          cacheSet("offset", Math.max(...list.map((u) => u["update_id"] as number)) + 1);
+          setRows((prev) => {
+            const seen = new Set(prev.map((p) => p.id));
+            return [...fresh.filter((f) => !seen.has(f.id)).reverse(), ...prev].slice(0, MAX_ROWS);
+          });
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        busy.current = false;
+      }
+    }
+    void tick();
+    const id = setInterval(tick, 3000);
     return () => {
-      void supabase.removeChannel(channel);
+      stop = true;
+      clearInterval(id);
     };
-  }, [queryClient]);
+  }, [poll, setRows]);
 
   const send = useMutation({ mutationFn: useServerFn(sendBroadcast) });
   const ack = useMutation({ mutationFn: useServerFn(answerCallback) });
 
-  async function setStatus(id: string, status: string) {
-    const { error } = await supabase.from("telegram_updates").update({ status }).eq("id", id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    void queryClient.invalidateQueries({ queryKey: ["telegram_updates"] });
+  function setStatus(id: string, status: string) {
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
   }
 
   function reply(row: Row) {
@@ -110,12 +137,15 @@ export function InboxPanel() {
         <Badge variant="secondary" className="font-mono text-[11px]">
           {rows.length} update{rows.length === 1 ? "" : "s"}
         </Badge>
+        <Button size="sm" variant="ghost" onClick={() => setRows([])}>
+          Clear cache
+        </Button>
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
         {!isLoading && !rows.length ? (
           <p className="text-sm text-muted-foreground">
-            Nothing yet. Register the webhook, then message your bot — new updates land here
+            Nothing yet. Message your bot — new updates are fetched every few seconds and kept in this browser
             instantly.
           </p>
         ) : null}
