@@ -56,19 +56,6 @@ async function callTelegram(
     durationMs: Date.now() - started,
   };
 
-  try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("telegram_api_log").insert({
-      method,
-      request: payload as never,
-      response: (body ?? null) as never,
-      ok,
-      status_code: response.status,
-    });
-  } catch (logError) {
-    console.error("Failed to log Telegram API call", logError);
-  }
-
   return result;
 }
 
@@ -267,18 +254,18 @@ export const uploadMedia = createServerFn({ method: "POST" })
       console.error(`Telegram ${method} upload failed [${response.status}]: ${raw}`);
     }
 
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin.from("telegram_api_log").insert({
-        method,
-        request: { kind: data.kind, filename: data.filename, bytes: buffer.length },
-        response: (body ?? null) as never,
-        ok,
-        status_code: response.status,
-      });
-    } catch (logError) {
-      console.error("Failed to log Telegram upload", logError);
-    }
-
     return { ok, status: response.status, body, method, durationMs: Date.now() - started };
+  });
+
+/** Pull new updates (no webhook, no database). Clears the webhook if one blocks polling. */
+export const pollUpdates = createServerFn({ method: "POST" })
+  .inputValidator((d: { offset?: number | undefined }) => ({ offset: typeof d?.offset === "number" ? d.offset : undefined }))
+  .handler(async ({ data }) => {
+    const payload = { offset: data.offset, timeout: 0, allowed_updates: ["message", "edited_message", "channel_post", "callback_query"] };
+    let r = await callTelegram("getUpdates", payload);
+    if (r.status === 409) {
+      await callTelegram("deleteWebhook", { drop_pending_updates: false });
+      r = await callTelegram("getUpdates", payload);
+    }
+    return r;
   });
