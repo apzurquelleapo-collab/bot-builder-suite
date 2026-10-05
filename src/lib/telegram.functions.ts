@@ -259,7 +259,7 @@ export const uploadMedia = createServerFn({ method: "POST" })
 
 /** Pull new updates (no webhook, no database). Clears the webhook if one blocks polling. */
 export const pollUpdates = createServerFn({ method: "POST" })
-  .inputValidator((d: { offset?: number }) => ({ offset: typeof d?.offset === "number" ? d.offset : undefined }))
+  .inputValidator((d: { offset?: number | undefined }) => ({ offset: typeof d?.offset === "number" ? d.offset : undefined }))
   .handler(async ({ data }) => {
     const payload = { offset: data.offset, timeout: 0, allowed_updates: ["message", "edited_message", "channel_post", "callback_query"] };
     let r = await callTelegram("getUpdates", payload);

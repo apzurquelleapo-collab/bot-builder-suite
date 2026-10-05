@@ -146,7 +146,6 @@ export function InboxPanel() {
         {!isLoading && !rows.length ? (
           <p className="text-sm text-muted-foreground">
             Nothing yet. Message your bot — new updates are fetched every few seconds and kept in this browser
-            instantly.
           </p>
         ) : null}
 
