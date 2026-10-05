@@ -76,3 +76,12 @@ Send one message to **many destinations at once**:
 - [x] API call audit log
 - [x] Telegram link decoder (paste a link → chat/topic IDs filled in)
 - [x] In-app interactive guide with live test sends
+
+## Superpowers tab
+
+- **Edit / forward / copy / pin / delete** messages by chat ID + message ID
+- **Reactions** (`setMessageReaction`) and activity indicators (`sendChatAction`: typing, upload_photo…)
+- **Upload from your computer** — photo, document, voice, video, GIF, round video note (multipart, up to ~9 MB)
+- **Albums, stickers, GIFs, videos** via URL or file_id
+- **Payments** — invoices in Telegram Stars
+- Every call is logged in `telegram_api_log`, like all other API calls
