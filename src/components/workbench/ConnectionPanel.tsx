@@ -84,7 +84,7 @@ export function ConnectionPanel() {
         <CardHeader>
           <CardTitle className="font-mono text-base tracking-tight">Webhook control</CardTitle>
           <CardDescription>
-            Point Telegram at this app so incoming messages appear in the live feed.
+            Optional. The inbox fetches messages directly and caches them in this browser — no webhook needed. Use deleteWebhook if one is set elsewhere; the inbox also clears it automatically.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
