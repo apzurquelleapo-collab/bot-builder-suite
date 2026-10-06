@@ -82,9 +82,15 @@ async function callTelegram(
   return result;
 }
 
-export async function deriveTelegramWebhookSecret(telegramApiKey: string): Promise<string> {
+export async function deriveTelegramWebhookSecret(credential: string): Promise<string> {
   const { createHash } = await import("node:crypto");
-  return createHash("sha256").update(`telegram-webhook:${telegramApiKey}`).digest("base64url");
+  return createHash("sha256").update(`telegram-webhook:${credential}`).digest("base64url");
+}
+
+function telegramCredential(): string {
+  const credential = process.env["TELEGRAM_BOT_TOKEN"] ?? process.env["TELEGRAM_API_KEY"];
+  if (!credential) throw new Error("No Telegram credential configured");
+  return credential;
 }
 
 /** Generic escape hatch used by the payload tester. */
@@ -113,7 +119,7 @@ export const registerWebhook = createServerFn({ method: "POST" })
   .handler(async ({ data }) =>
     callTelegram("setWebhook", {
       url: data.url,
-      secret_token: await deriveTelegramWebhookSecret(process.env["TELEGRAM_API_KEY"]!),
+      secret_token: await deriveTelegramWebhookSecret(telegramCredential()),
       allowed_updates: ["message", "edited_message", "channel_post", "callback_query"],
       drop_pending_updates: false,
     }),
