@@ -236,10 +236,9 @@ export const uploadMedia = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data }) => {
-    const lovableKey = process.env["LOVABLE_API_KEY"];
-    const telegramKey = process.env["TELEGRAM_API_KEY"];
-    if (!lovableKey) throw new Error("LOVABLE_API_KEY is not configured");
-    if (!telegramKey) throw new Error("TELEGRAM_API_KEY is not configured");
+    const { url, headers } = telegramEndpoint(UPLOAD_KINDS[data.kind]);
+    // Multipart: browser/fetch sets its own Content-Type boundary — drop ours.
+    delete headers["Content-Type"];
 
     const base64 = data.fileBase64.includes(",") ? data.fileBase64.split(",")[1]! : data.fileBase64;
     const buffer = Buffer.from(base64, "base64");
@@ -259,12 +258,9 @@ export const uploadMedia = createServerFn({ method: "POST" })
 
     const method = UPLOAD_KINDS[data.kind];
     const started = Date.now();
-    const response = await fetch(`${GATEWAY_URL}/${method}`, {
+    const response = await fetch(url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": telegramKey,
-      },
+      headers,
       body: form,
     });
 
