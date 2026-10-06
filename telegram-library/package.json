@@ -1,0 +1,53 @@
+{
+  "name": "telegram-workbench",
+  "version": "1.0.0",
+  "description": "Telegram Bot client + React hooks: send messages (multi-chat, multi-topic), keyboards, media, polls, inbox polling, webhook control and link decoding. Zero dependencies, works with any React project.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "require": "./dist/react.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "react",
+    "hooks",
+    "telegram-bot-api"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "@types/react": "^19.2.0",
+    "react": "^19.2.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3"
+  }
+}
