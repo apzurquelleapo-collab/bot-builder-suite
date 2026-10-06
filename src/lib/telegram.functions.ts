@@ -12,23 +12,46 @@ export type TelegramCallResult = {
   durationMs: number;
 };
 
-async function callTelegram(
-  method: string,
-  payload: Record<string, unknown>,
-): Promise<TelegramCallResult> {
+/**
+ * Direct mode: when TELEGRAM_BOT_TOKEN is set (project .env), the app talks to
+ * api.telegram.org itself — fully independent of Lovable connectors.
+ * Fallback: the Lovable connector gateway (TELEGRAM_API_KEY + LOVABLE_API_KEY).
+ */
+function telegramEndpoint(method: string): { url: string; headers: Record<string, string> } {
+  const botToken = process.env["TELEGRAM_BOT_TOKEN"];
+  if (botToken) {
+    return {
+      url: `https://api.telegram.org/bot${botToken}/${method}`,
+      headers: { "Content-Type": "application/json" },
+    };
+  }
   const lovableKey = process.env["LOVABLE_API_KEY"];
   const telegramKey = process.env["TELEGRAM_API_KEY"];
-  if (!lovableKey) throw new Error("LOVABLE_API_KEY is not configured");
-  if (!telegramKey) throw new Error("TELEGRAM_API_KEY is not configured");
-
-  const started = Date.now();
-  const response = await fetch(`${GATEWAY_URL}/${method}`, {
-    method: "POST",
+  if (!lovableKey || !telegramKey) {
+    throw new Error(
+      "No Telegram credentials: set TELEGRAM_BOT_TOKEN in .env (direct mode) or link the Telegram connector",
+    );
+  }
+  return {
+    url: `${GATEWAY_URL}/${method}`,
     headers: {
       Authorization: `Bearer ${lovableKey}`,
       "X-Connection-Api-Key": telegramKey,
       "Content-Type": "application/json",
     },
+  };
+}
+
+async function callTelegram(
+  method: string,
+  payload: Record<string, unknown>,
+): Promise<TelegramCallResult> {
+  const { url, headers } = telegramEndpoint(method);
+
+  const started = Date.now();
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
     body: JSON.stringify(payload),
   });
 
@@ -59,9 +82,15 @@ async function callTelegram(
   return result;
 }
 
-export async function deriveTelegramWebhookSecret(telegramApiKey: string): Promise<string> {
+export async function deriveTelegramWebhookSecret(credential: string): Promise<string> {
   const { createHash } = await import("node:crypto");
-  return createHash("sha256").update(`telegram-webhook:${telegramApiKey}`).digest("base64url");
+  return createHash("sha256").update(`telegram-webhook:${credential}`).digest("base64url");
+}
+
+function telegramCredential(): string {
+  const credential = process.env["TELEGRAM_BOT_TOKEN"] ?? process.env["TELEGRAM_API_KEY"];
+  if (!credential) throw new Error("No Telegram credential configured");
+  return credential;
 }
 
 /** Generic escape hatch used by the payload tester. */
@@ -90,7 +119,7 @@ export const registerWebhook = createServerFn({ method: "POST" })
   .handler(async ({ data }) =>
     callTelegram("setWebhook", {
       url: data.url,
-      secret_token: await deriveTelegramWebhookSecret(process.env["TELEGRAM_API_KEY"]!),
+      secret_token: await deriveTelegramWebhookSecret(telegramCredential()),
       allowed_updates: ["message", "edited_message", "channel_post", "callback_query"],
       drop_pending_updates: false,
     }),
@@ -207,10 +236,9 @@ export const uploadMedia = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data }) => {
-    const lovableKey = process.env["LOVABLE_API_KEY"];
-    const telegramKey = process.env["TELEGRAM_API_KEY"];
-    if (!lovableKey) throw new Error("LOVABLE_API_KEY is not configured");
-    if (!telegramKey) throw new Error("TELEGRAM_API_KEY is not configured");
+    const { url, headers } = telegramEndpoint(UPLOAD_KINDS[data.kind]);
+    // Multipart: browser/fetch sets its own Content-Type boundary — drop ours.
+    delete headers["Content-Type"];
 
     const base64 = data.fileBase64.includes(",") ? data.fileBase64.split(",")[1]! : data.fileBase64;
     const buffer = Buffer.from(base64, "base64");
@@ -230,12 +258,9 @@ export const uploadMedia = createServerFn({ method: "POST" })
 
     const method = UPLOAD_KINDS[data.kind];
     const started = Date.now();
-    const response = await fetch(`${GATEWAY_URL}/${method}`, {
+    const response = await fetch(url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": telegramKey,
-      },
+      headers,
       body: form,
     });
 
