@@ -12,23 +12,46 @@ export type TelegramCallResult = {
   durationMs: number;
 };
 
-async function callTelegram(
-  method: string,
-  payload: Record<string, unknown>,
-): Promise<TelegramCallResult> {
+/**
+ * Direct mode: when TELEGRAM_BOT_TOKEN is set (project .env), the app talks to
+ * api.telegram.org itself — fully independent of Lovable connectors.
+ * Fallback: the Lovable connector gateway (TELEGRAM_API_KEY + LOVABLE_API_KEY).
+ */
+function telegramEndpoint(method: string): { url: string; headers: Record<string, string> } {
+  const botToken = process.env["TELEGRAM_BOT_TOKEN"];
+  if (botToken) {
+    return {
+      url: `https://api.telegram.org/bot${botToken}/${method}`,
+      headers: { "Content-Type": "application/json" },
+    };
+  }
   const lovableKey = process.env["LOVABLE_API_KEY"];
   const telegramKey = process.env["TELEGRAM_API_KEY"];
-  if (!lovableKey) throw new Error("LOVABLE_API_KEY is not configured");
-  if (!telegramKey) throw new Error("TELEGRAM_API_KEY is not configured");
-
-  const started = Date.now();
-  const response = await fetch(`${GATEWAY_URL}/${method}`, {
-    method: "POST",
+  if (!lovableKey || !telegramKey) {
+    throw new Error(
+      "No Telegram credentials: set TELEGRAM_BOT_TOKEN in .env (direct mode) or link the Telegram connector",
+    );
+  }
+  return {
+    url: `${GATEWAY_URL}/${method}`,
     headers: {
       Authorization: `Bearer ${lovableKey}`,
       "X-Connection-Api-Key": telegramKey,
       "Content-Type": "application/json",
     },
+  };
+}
+
+async function callTelegram(
+  method: string,
+  payload: Record<string, unknown>,
+): Promise<TelegramCallResult> {
+  const { url, headers } = telegramEndpoint(method);
+
+  const started = Date.now();
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
     body: JSON.stringify(payload),
   });
 
