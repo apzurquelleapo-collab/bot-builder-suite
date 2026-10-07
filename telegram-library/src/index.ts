@@ -16,3 +16,11 @@ export type {
 export { parseTelegramLink, describeUpdate } from "./core/link-parser.js";
 export type { ParsedTelegramLink, UpdateSummary } from "./core/link-parser.js";
 export { cacheGet, cacheSet, cacheClear } from "./core/local-cache.js";
+export {
+  TelegramBots,
+  discoverBotTokens,
+  envNameForBot,
+  normalizeBotId,
+  DEFAULT_BOT_ID,
+} from "./core/bots.js";
+export type { BotId, BotsOptions } from "./core/bots.js";

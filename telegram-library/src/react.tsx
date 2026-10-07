@@ -128,9 +128,11 @@ export type InboxState = {
  * Polling only runs while the page is open.
  */
 export function useInbox(options: InboxOptions = {}): InboxState {
-  const client = useTelegram();
+  const client = useTelegram(options.botId);
   const pollMs = options.pollMs ?? 3000;
-  const cacheKey = options.cacheKey ?? "inbox";
+  const cacheKey =
+    options.cacheKey ??
+    (options.botId === undefined ? "inbox" : `inbox:${normalizeBotId(options.botId)}`);
   const limit = options.limit ?? 300;
 
   const [updates, setUpdates] = useState<UpdateSummary[]>(() => cacheGet(cacheKey, []));
@@ -212,10 +214,10 @@ export type SendState = {
 };
 
 /** Convenience wrapper around client.sendMessage with pending/error state. */
-export function useSend(): SendState & {
+export function useSend(botId?: BotId): SendState & {
   send: (params: Parameters<TelegramClient["sendMessage"]>[0]) => Promise<unknown>;
 } {
-  const client = useTelegram();
+  const client = useTelegram(botId);
   const [state, setState] = useState<SendState>({ sending: false });
 
   const send = useCallback(
