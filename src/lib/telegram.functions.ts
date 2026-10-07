@@ -37,8 +37,7 @@ function telegramEndpoint(
   method: string,
   botId?: string | number | null,
 ): { url: string; headers: Record<string, string> } {
-  const botToken_ = botToken(botId);
-  const botToken = botToken_;
+  const token = botToken(botId);
   if (botToken) {
     return {
       url: `https://api.telegram.org/bot${botToken}/${method}`,
