@@ -14,27 +14,46 @@ import {
   type ReactNode,
 } from "react";
 import { TelegramClient } from "./core/client.js";
+import { TelegramBots, normalizeBotId, type BotId } from "./core/bots.js";
 import { describeUpdate, type UpdateSummary } from "./core/link-parser.js";
 import { cacheGet, cacheSet, cacheClear } from "./core/local-cache.js";
 
 // ---------- Provider ----------
 
-const TelegramContext = createContext<TelegramClient | null>(null);
+const TelegramContext = createContext<TelegramBots | null>(null);
 
+/**
+ * One bot:   <TelegramProvider client={client}>
+ * Many bots: <TelegramProvider bots={TelegramBots.fromEnv(env)}>  or  bots={{ "1": c1, support: c2 }}
+ */
 export function TelegramProvider({
   client,
+  bots,
   children,
 }: {
-  client: TelegramClient;
+  client?: TelegramClient;
+  bots?: TelegramBots | Record<string, TelegramClient>;
   children: ReactNode;
 }) {
-  return <TelegramContext.Provider value={client}>{children}</TelegramContext.Provider>;
+  const registry = useMemo(() => {
+    if (bots instanceof TelegramBots) return bots;
+    const r = new TelegramBots(bots ?? {});
+    if (client) r.register("1", client);
+    return r;
+  }, [client, bots]);
+  return <TelegramContext.Provider value={registry}>{children}</TelegramContext.Provider>;
 }
 
-export function useTelegram(): TelegramClient {
-  const client = useContext(TelegramContext);
-  if (!client) throw new Error("useTelegram must be used inside <TelegramProvider client={...}>");
-  return client;
+/** All bots in the provider. */
+export function useTelegramBots(): TelegramBots {
+  const bots = useContext(TelegramContext);
+  if (!bots) throw new Error("useTelegram must be used inside <TelegramProvider>");
+  return bots;
+}
+
+/** Get a bot client. No id = default bot. */
+export function useTelegram(botId?: BotId): TelegramClient {
+  return useTelegramBots().get(botId);
 }
 
 // ---------- Bot status ----------
@@ -47,9 +66,10 @@ export type BotStatus = {
   error?: string;
 };
 
-/** Check the bot token with getMe. */
-export function useBotStatus(): BotStatus & { refresh: () => void } {
-  const client = useTelegram();
+/** Check a bot token with getMe. */
+export function useBotStatus(botId?: BotId): BotStatus & { refresh: () => void } {
+  const client = useTelegram(botId);
+
   const [state, setState] = useState<BotStatus>({ loading: true, connected: false });
   const [nonce, setNonce] = useState(0);
 
@@ -83,9 +103,11 @@ export function useBotStatus(): BotStatus & { refresh: () => void } {
 // ---------- Inbox (polling + local cache) ----------
 
 export type InboxOptions = {
+  /** Which bot to poll (default bot if omitted). */
+  botId?: BotId;
   /** Poll interval in ms (default 3000). Set 0 to disable polling. */
   pollMs?: number;
-  /** localStorage cache key. Different bots/pages can use different keys. */
+  /** localStorage cache key (default "inbox" or "inbox:<botId>"). */
   cacheKey?: string;
   /** Max rows kept in the local cache (default 300). */
   limit?: number;
@@ -106,9 +128,11 @@ export type InboxState = {
  * Polling only runs while the page is open.
  */
 export function useInbox(options: InboxOptions = {}): InboxState {
-  const client = useTelegram();
+  const client = useTelegram(options.botId);
   const pollMs = options.pollMs ?? 3000;
-  const cacheKey = options.cacheKey ?? "inbox";
+  const cacheKey =
+    options.cacheKey ??
+    (options.botId === undefined ? "inbox" : `inbox:${normalizeBotId(options.botId)}`);
   const limit = options.limit ?? 300;
 
   const [updates, setUpdates] = useState<UpdateSummary[]>(() => cacheGet(cacheKey, []));
@@ -190,10 +214,10 @@ export type SendState = {
 };
 
 /** Convenience wrapper around client.sendMessage with pending/error state. */
-export function useSend(): SendState & {
+export function useSend(botId?: BotId): SendState & {
   send: (params: Parameters<TelegramClient["sendMessage"]>[0]) => Promise<unknown>;
 } {
-  const client = useTelegram();
+  const client = useTelegram(botId);
   const [state, setState] = useState<SendState>({ sending: false });
 
   const send = useCallback(
